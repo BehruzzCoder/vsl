@@ -8,20 +8,37 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({origin:[ 'http://www.maruf-murodovich.org/', 'http://localhost:3000' ]}));
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+}));
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const SHEET_ID = process.env.SHEET_ID;
 const SHEET_RANGE = process.env.SHEET_RANGE || 'Sheet1!A:H';
 
+if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+  console.error('GOOGLE_CLIENT_EMAIL yoki GOOGLE_PRIVATE_KEY topilmadi');
+  process.exit(1);
+}
+
+if (!SHEET_ID) {
+  console.error('SHEET_ID topilmadi');
+  process.exit(1);
+}
+
 const auth = new google.auth.GoogleAuth({
-  keyFile: 'credentials.json',
+  credentials: {
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  },
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
 function normalizePhone(phone = '') {
-  let cleaned = phone.replace(/\D/g, '');
+  let cleaned = String(phone).replace(/\D/g, '');
 
   if (cleaned.length === 9) {
     cleaned = '998' + cleaned;
@@ -35,7 +52,9 @@ function normalizePhone(phone = '') {
 }
 
 function formatDate() {
-  return new Date().toLocaleString('uz-UZ');
+  return new Date().toLocaleString('uz-UZ', {
+    timeZone: 'Asia/Tashkent',
+  });
 }
 
 async function getSheetsClient() {
@@ -80,7 +99,7 @@ const swaggerDocument = {
   },
   servers: [
     {
-      url: `http://localhost:${PORT}`,
+      url: 'http://localhost:3000',
     },
   ],
   paths: {
@@ -159,7 +178,7 @@ app.post('/lead', async (req, res) => {
 
     const normalizedPhone = normalizePhone(phone);
 
-    if (!normalizedPhone || normalizedPhone.length < 9) {
+    if (!normalizedPhone || normalizedPhone.length !== 12) {
       return res.status(400).json({
         success: false,
         message: 'Telefon raqam noto‘g‘ri',
@@ -200,7 +219,7 @@ app.post('/lead', async (req, res) => {
       message: "Ro‘yxatdan o‘tish muvaffaqiyatli yakunlandi",
     });
   } catch (error) {
-    console.error('Lead saqlashda xatolik:', error);
+    console.error('Lead saqlashda xatolik:', error?.response?.data || error.message || error);
 
     return res.status(500).json({
       success: false,
@@ -209,7 +228,7 @@ app.post('/lead', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
   console.log(`Swagger: http://localhost:${PORT}/api-docs`);
 });
