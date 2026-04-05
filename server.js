@@ -116,7 +116,7 @@ const swaggerDocument = {
   },
   servers: [
     {
-      url: `https://vsl-production.up.railway.app`,
+      url: `https://vsl-production.up.railway.app/`,
     },
   ],
   paths: {
@@ -157,9 +157,6 @@ const swaggerDocument = {
         responses: {
           201: {
             description: 'Lead muvaffaqiyatli saqlandi',
-          },
-          200: {
-            description: 'Dubl lead topildi',
           },
           400: {
             description: 'Noto\'g\'ri ma\'lumot',
@@ -207,14 +204,7 @@ app.post('/lead', async (req, res) => {
     const dataRows = rows.slice(1);
 
     const duplicateRow = dataRows.find((row) => row[3] === normalizedPhone);
-
-    if (duplicateRow) {
-      return res.status(200).json({
-        success: false,
-        duplicate: true,
-        message: 'Siz avval ro\'yxatdan o\'tgansiz',
-      });
-    }
+    const isDuplicate = !!duplicateRow;
 
     const nextId = dataRows.length + 1;
 
@@ -226,14 +216,15 @@ app.post('/lead', async (req, res) => {
       formatDate(),
       'vsl-site',
       'yangi',
-      '',
+      isDuplicate ? 'dubl' : '',  // H ustuniga izoh
     ];
 
     await appendRow(newRow);
 
+    // Har doim muvaffaqiyatli javob qaytaradi, faqat duplicate flag bilan
     return res.status(201).json({
       success: true,
-      duplicate: false,
+      duplicate: isDuplicate,
       message: "Ro'yxatdan o'tish muvaffaqiyatli yakunlandi",
     });
   } catch (error) {
