@@ -116,7 +116,7 @@ const swaggerDocument = {
   },
   servers: [
     {
-      url: `http://localhost:${PORT}`,
+      url: `https://vsl-production.up.railway.app`,
     },
   ],
   paths: {
